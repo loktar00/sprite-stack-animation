@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Animated sprite stack</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #17131c; color: #8d8399; font: 13px/1.5 system-ui, "Segoe UI", Helvetica, Arial, sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  canvas { display: block; image-rendering: pixelated; }
+  p { margin: 8px 16px; text-align: center; }
+  a { color: #c9bfd6; }
+</style>
+</head>
+<body>
+<canvas id="c" width="640" height="360"></canvas>
+<p id="note">Canvas 2D only: every slice is one drawImage from the PNG strips in art/. Space pauses.
+  Views: <a href="?view=stack">stack</a> <a href="?view=spread">spread</a> <a href="?view=rig">rig</a> <a href="?view=bones">bones</a> <a href="?wide">wide</a> <a href="?">loop</a></p>
+<script src="art/parts.js"></script>
+<script src="js/stack.js"></script>
+<script src="js/rig.js"></script>
+<script src="js/demo.js"></script>
+</body>
+</html>
