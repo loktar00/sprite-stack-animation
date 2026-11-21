@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """capture.py: save frames of the demo as PNGs, one per step of its fixed clock.
 
-    python tools/capture.py OUT_DIR [--scale 1] [--step 2] [--query "&wide"]
+    python tools/capture.py OUT_DIR [--scale 1] [--step 2] [--query "&char=robot"]
 
 Needs Playwright (pip install playwright; playwright install chromium). The page is opened from the files in this
 folder in headless Chromium. Nothing is timed: each frame is asked for by number (demo.seek) and then photographed,
@@ -28,6 +28,7 @@ async def main():
         errors = []
         page.on('pageerror', lambda e: errors.append(str(e)))
         await page.goto(page_url)
+        await page.wait_for_function('window.demo && window.demo.ready')
         info = await page.evaluate('demo.ready')
         last = info['frames'] if a.last < 0 else a.last
         n = 0

@@ -1,17 +1,19 @@
-// demo.js: a stacked man walks a circle. Builds him from the strips, walks him with rig.js, draws him with stack.js.
+// demo.js: a stacked character walks a circle. Loads its strips, walks it with rig.js, draws it with stack.js.
+// Which character: the CHARACTER object (character.js, or examples/<name>/character.js with ?char=<name>).
 //
 // The loop shows four views in turn: the stack, the stack spread apart, the stack with its skeleton, the skeleton.
-// Address options: ?view=stack|spread|rig|bones holds one view, ?wide shows the whole circle, ?bare hides the note,
+// Address options: ?char=<name> picks an example, ?view=stack|spread|rig|bones holds one view, ?wide shows the whole circle, ?bare hides the note,
 // ?hold stops the clock (for capture: demo.seek(frame)).
 (function () {
   'use strict';
   const TAU = Math.PI * 2, Q = new URLSearchParams(location.search);
   const W = 640, H = 360;                                   // the picture, in its own pixels
+  const C = window.CHARACTER, BASE = window.CHARACTER_BASE || '';
   const WIDE = Q.has('wide'), VIEW = Q.get('view');
-  const SCALE = WIDE ? 4 : 8, PITCH = 42 * Math.PI / 180;   // screen pixels per art pixel; the camera angle above the ground
-  const AX = WIDE ? 410 : 400, AY = WIDE ? 200 : 278;       // the anchor: the middle of the circle, or the ground point under the man
+  const SCALE = WIDE ? Math.max(2, Math.round(C.view.scale / 2)) : C.view.scale, PITCH = C.view.pitch * Math.PI / 180;   // screen pixels per art pixel; the camera angle above the ground
+  const AX = WIDE ? 410 : 400, AY = WIDE ? 200 : 278;       // the anchor: the middle of the circle, or the ground point under the character
   const PAD = 280;                                          // room above the picture for the spread stack
-  const STEP = 1 / 60, LAP = 540, STRIDES = 10;             // one lap: 540 steps of 1/60 s and exactly 10 strides
+  const STEP = 1 / 60, LAP = C.walk.lapFrames, STRIDES = C.walk.strides;   // one lap: LAP steps of 1/60 s and exactly STRIDES strides
 
   const cv = document.getElementById('c'), c = cv.getContext('2d');
   const stage = document.createElement('canvas'); stage.width = W; stage.height = H + PAD;
@@ -20,11 +22,11 @@
   let ART = null, FRAMES = [], RADIUS = 0, K = 1;
 
   // ---------------------------------------------------------------- the walk, worked out once
-  // The man walks a circle so he is seen from every side. Its size is chosen so that one lap is a whole number of
+  // The character walks a circle so it is seen from every side. Its size is chosen so that one lap is a whole number of
   // strides: then the last frame of a lap leads into the first, and the loop has no seam. A few laps are walked
   // first so the start is forgotten; the poses of the last lap are kept.
   function simulate() {
-    const w = Rig.createWalker(), da = TAU / LAP, a0 = -0.6;
+    const w = Rig.createWalker(C.rig), da = TAU / LAP, a0 = -0.6;
     RADIUS = STRIDES * w.c.stride / (LAP * 2 * Math.sin(Math.PI / LAP));   // LAP chords of the circle add up to STRIDES strides
     const at = function (f) { const a = a0 + da * f; return [RADIUS * Math.cos(a), RADIUS * Math.sin(a), a + Math.PI / 2]; };
     const p0 = at(0); Rig.place(w, p0[0], p0[1], p0[2]);
@@ -35,24 +37,6 @@
     return { frames: LAP, fps: 60, radius: RADIUS, speed: STRIDES * w.c.stride / (LAP * STEP), seam: seam };
   }
 
-  // ---------------------------------------------------------------- the man, as stacks
-  // a limb: one small disc image repeated along a bone. Each disc is a layer thick, so it is put half a layer
-  // under the bone: then the bone runs through the middle of the discs and the skeleton lines up with the art.
-  function limb(disc, a, b, n) { for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; R.slice(disc, 0, a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t - 0.5, 0, 1); } }
-  function drawMan(P) {
-    for (let i = 0; i < 2; i++) {
-      const L = P.legs[i], A = P.arms[i];
-      R.stack(ART.boot, L.sole[0], L.sole[1], L.sole[2], L.rot);
-      limb(ART.shin, L.ankle, L.knee, 5); limb(ART.thigh, L.knee, L.hip, 5);
-      limb(ART.arm, A.shoulder, A.elbow, 4); limb(ART.arm, A.elbow, A.hand, 4);
-      R.slice(ART.hand, 0, A.hand[0], A.hand[1], A.hand[2] - 0.5, 0, 1);
-    }
-    // the torso: every slice has its own angle, from the angle of the hips at the bottom to that of the shoulders at the top
-    const T = ART.torso, pz = P.pelvis[2] - 1;
-    for (let i = 0; i < T.n; i++) { const t = Math.min(1, i / (T.n - 3)); R.slice(T, i, P.x, P.y, pz + i, P.hipsAngle + (P.shouldersAngle - P.hipsAngle) * t, 1); }
-    R.stack(ART.head, P.x, P.y, pz + T.n, P.heading);
-  }
-
   // ---------------------------------------------------------------- the skeleton: the joints the rig worked out, projected
   function line(a, b) { c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); }
   function joint(p, r, full) { c.beginPath(); c.arc(p[0], p[1], r, 0, TAU); c.fillStyle = full ? PIN : BG; c.fill(); c.stroke(); }
@@ -60,19 +44,20 @@
     if (alpha <= 0) return;
     const pr = function (p) { return R.project(p[0], p[1], p[2]); }, k = SCALE / 8, r = 1.6 + 2.2 * k;
     c.save(); c.globalAlpha = alpha; c.strokeStyle = INK; c.lineWidth = 1 + 1.2 * k; c.lineCap = 'round';
-    const pelvis = pr(P.pelvis), neck = pr([P.x, P.y, P.pelvis[2] + 9.5]);   // 9.5: the height of the shoulders over the hips (rig.js)
+    const pelvis = pr(P.pelvis), neck = pr(P.top);
     c.setLineDash([4 * k, 5 * k]); line(pr([P.x, P.y, 0]), pelvis); c.setLineDash([]);     // hip height, bob included
     for (let i = 0; i < 2; i++) {
-      const L = P.legs[i], A = P.arms[i], hip = pr(L.hip), knee = pr(L.knee), ankle = pr(L.ankle), sh = pr(A.shoulder), el = pr(A.elbow), hand = pr(A.hand);
-      line(hip, knee); line(knee, ankle); line(sh, el); line(el, hand);
+      const L = P.legs[i], A = P.arms[i], hip = pr(L.hip), knee = pr(L.knee), ankle = pr(L.ankle);
+      line(hip, knee); line(knee, ankle);
+      if (A) { const sh = pr(A.shoulder), el = pr(A.elbow), hand = pr(A.hand); line(sh, el); line(el, hand); joint(sh, r); joint(el, r * 0.85); joint(hand, r * 0.85); }
       if (L.planted) { c.strokeStyle = PIN;                                                                     // a planted foot: a ring on the ground that does not move
         const q = pr([L.sole[0], L.sole[1], 0]), rr = 9 * k;
         c.beginPath(); c.ellipse(q[0], q[1], rr, rr * R.ys, 0, 0, TAU); c.stroke();
         line([q[0] - rr * 1.45, q[1]], [q[0] - rr, q[1]]); line([q[0] + rr, q[1]], [q[0] + rr * 1.45, q[1]]); c.strokeStyle = INK;
       }
-      joint(hip, r); joint(knee, r); joint(ankle, r, L.planted); joint(sh, r); joint(el, r * 0.85); joint(hand, r * 0.85);
+      joint(hip, r); joint(knee, r); joint(ankle, r, L.planted);
     }
-    line(pr(P.legs[0].hip), pr(P.legs[1].hip)); line(pr(P.arms[0].shoulder), pr(P.arms[1].shoulder)); line(pelvis, neck);
+    line(pr(P.legs[0].hip), pr(P.legs[1].hip)); if (P.arms.length) line(pr(P.arms[0].shoulder), pr(P.arms[1].shoulder)); line(pelvis, neck);
     joint(pelvis, r * 1.15); joint(neck, r);
     c.restore();
   }
@@ -81,7 +66,7 @@
   function ramp(u, a, b) { const t = Math.max(0, Math.min(1, (u - a) / (b - a))); return t * t * (3 - 2 * t); }
   function panel(x0, y0) {
     c.font = '9px ' + FONT; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-    c.fillStyle = TXT; c.fillText('Everything he is made of: ' + PARTS.length + ' PNG strips', x0, y0);
+    c.fillStyle = TXT; c.fillText('Everything it is made of: ' + PARTS.length + ' PNG strips', x0, y0);
     let y = y0 + 16, x = x0, rowH = 0;
     for (let n = 0; n < PARTS.length; n++) {
       const p = PARTS[n], s = ART[p.name], small = p.n <= 3, w = p.cw * p.n;
@@ -102,13 +87,13 @@
       stackA = 1 - ramp(u, 0.72, 0.76) + ramp(u, 0.95, 0.995); bonesA = ramp(u, 0.5, 0.54) - ramp(u, 0.95, 0.995);
       cap = [1 - ramp(u, 0.08, 0.1) + ramp(u, 0.46, 0.48) - ramp(u, 0.49, 0.51) + ramp(u, 0.97, 1), ramp(u, 0.1, 0.13) - ramp(u, 0.43, 0.46), ramp(u, 0.51, 0.54) - ramp(u, 0.7, 0.73), ramp(u, 0.73, 0.76) - ramp(u, 0.945, 0.97)];
     }
-    // the close view follows the ground point under the man; the wide view keeps the circle still
+    // the close view follows the ground point under the character; the wide view keeps the circle still
     const ox = WIDE ? AX : AX - Math.round(SCALE * P.x), oy = WIDE ? AY : AY - Math.round(SCALE * P.y * R.ys);
     const mx = ox + SCALE * P.x, my = oy + SCALE * P.y * R.ys, zoom = 1 - 0.5 * spread;   // spread, the picture draws back so the taller stack fits
 
     g.clearRect(0, 0, W, H + PAD);
-    g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(mx, my + PAD, 3.2 * SCALE, 3.2 * SCALE * R.ys, 0, 0, TAU); g.fill();
-    R.begin(ox, oy + PAD, spread); drawMan(P); R.flush();
+    g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(mx, my + PAD, C.view.shadow * SCALE, C.view.shadow * SCALE * R.ys, 0, 0, TAU); g.fill();
+    R.begin(ox, oy + PAD, spread); C.draw(R, ART, P); R.flush();
     const calls = R.calls;
     R.begin(ox, oy, 0);                                      // (for project(): the skeleton is drawn on the picture itself)
     R.calls = calls;
@@ -144,7 +129,7 @@
   window.addEventListener('resize', function () { fit(); render(at); });
   window.addEventListener('keydown', function (e) { if (e.key === ' ') { paused = !paused; e.preventDefault(); } });
   window.demo = { frames: LAP, fps: 60, info: null, seek: function (f) { playing = false; at = f; fit(); render(f); return f; } };
-  window.demo.ready = SpriteStack.load(PARTS, 'art/').then(function (art) {
+  window.demo.ready = SpriteStack.load(PARTS, BASE + 'art/').then(function (art) {
     ART = art; window.demo.info = simulate(); fit(); render(0);
     requestAnimationFrame(function (t) { t0 = t; tick(t); });
     return window.demo.info;

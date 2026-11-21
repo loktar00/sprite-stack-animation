@@ -10,15 +10,64 @@ drawing every slice with `drawImage`, turned by the object's angle, each a littl
 one below. No depth buffer, no geometry, no shader. Animating one means cutting the character into several small
 stacks and moving those with a rig.
 
-A working reference is in this repository: `js/stack.js` (drawing), `js/rig.js` (gait and IK), `js/demo.js`
-(a man assembled from seven strips), `tools/build-art.js` (strips from functions), `tools/capture.py` and
-`tools/encode.sh` (GIF and MP4). Read those before writing your own; they are short.
+`template/` beside this file is a complete, runnable kit. Start every job by copying it; do not rewrite the
+drawing or the rig from memory.
+
+| In `template/` | What |
+| --- | --- |
+| `character.js` | the one file that defines a character: materials, parts, rig, view, walk, draw |
+| `examples/robot/character.js` | a second character (no arms, backward knees) to copy from |
+| `index.html`, `js/stack.js`, `js/rig.js`, `js/demo.js` | the page, the stack renderer, the gait and IK, the views and frame clock |
+| `tools/build-art.js` | strips from `character.js` (Node, no packages) |
+| `tools/capture.py`, `tools/encode.sh` | frames, GIF and MP4 (Python with Playwright, ffmpeg) |
+
+## Make a new character
+
+1. **Copy the kit** into the user's project: the whole `template/` folder, as a new folder named for the
+   character. Keep `js/` and `tools/` unchanged.
+2. **Write `character.js`** from the user's description. Start from the template's own (a figure with arms) or
+   `examples/robot/character.js` (no arms), whichever is closer.
+   - `materials`: three tones each, `[side in shade, side, top]`. Pick 5 to 8 materials. Tops clearly lighter
+     than sides, or the form will not read.
+   - `parts`: one stack per rigid piece (head, torso, a boot or foot) plus one single-layer disc per limb
+     segment. `w` runs front to back with +x forward, `h` side to side, `layers` is the height. Each `fn(x, y, z)`
+     returns a material name or null, with x and y measured from the middle of the cell. Typical sizes: head and
+     torso 10 to 16 pixels across and 8 to 14 layers; limb discs 5x5. Put identifying detail on the front (+x)
+     and on top, where the camera sees it.
+   - `rig`: make the numbers agree with the art. `thigh + shin` is a little more than `standHip - ankle`, so the
+     knees are slightly bent when standing. `hipHalf` is half the width of the lowest torso layer.
+     `spine` is the height from hips to shoulders. `stride` is about 1.3 times the leg length for a walk.
+   - `draw`: boots at `sole` with the foot's `rot`; `R.limb` for each bone; the torso slices blended from
+     `hipsAngle` to `shouldersAngle`; the head on top at `heading`.
+3. **Build:** `node tools/build-art.js`. Open `art/sheet.png` and check every slice is what you meant, bottom
+   layer first.
+4. **Look at it** before saying it works: open `index.html`, or capture stills with
+   `python tools/capture.py out/check --scale 2 --step 90` and read a few of the PNGs. Check the stack view from
+   front, side and back, then `?view=rig`: the bones must run through the limbs and the hips must sit at the
+   bottom of the torso.
+5. **Tune** in `rig` and reload (no rebuild needed):
+   - stiff straight legs: lower `standHip` or lengthen the bones;
+   - shuffling: raise `lift`; gliding: raise `bob` and `twist`;
+   - a run instead of a walk: `duty` under 0.5 and a longer `stride`;
+   - knees the wrong way: `kneeHint: -1`;
+   - too fast or slow in the loop: `walk.strides` (strides per lap; keep it a whole number).
+6. **Capture:** `sh tools/encode.sh` writes `out/walk.gif` (640x360, 30 fps) and `out/walk.mp4` (1080p, 60 fps).
+   Look at frames of the result before handing it over.
+
+Hand-drawn strips work too: a part listed without `fn` is left alone by the builder, and the user supplies
+`art/<name>.png` (cells side by side, bottom slice first, equal cell size, turning axis at the cell centre,
+facing right). `art/parts.js` holds the cell sizes: `window.PARTS = [{ name, cw, ch, n }, ...]`.
+
+For more than one character in a project, use `examples/<name>/character.js`,
+`node tools/build-art.js examples/<name>` and `index.html?char=<name>`.
+
+The rest of this file explains why the kit does what it does, for when you need to change it.
 
 ## 1. Slices and strips
 
 - One PNG per part. Cells of equal size, bottom slice first, the stack's turning axis at the centre of each cell.
 - Draw them by hand in a pixel editor, or generate them from a function `(x, y, z) -> colour` as
-  `tools/build-art.js` does. Either way the page only ever sees flat images.
+  `tools/build-art.js` does from `character.js`. Either way the page only ever sees flat images.
 - Bake shading into the slices. A pixel with nothing above it is a "top" and gets a lighter tone; the rest are
   seen only as the side of a layer and get a darker tone. Without this, a stack of one colour is a blob.
 - Keep +x as "forward" in every strip so one angle turns every part the same way.
@@ -60,7 +109,8 @@ boots and hands. A limb is the disc repeated along a bone.
 - Give each torso slice its own angle, blended from the hips' angle at the bottom to the shoulders' at the top.
   That is the whole "twist" of a walk and it costs nothing.
 - A disc is one layer thick and is drawn upward from its z. Place discs half a layer under the bone
-  (`z - 0.5`) so the bone runs through their middle. If you skip this the skeleton overlay sits visibly low.
+  (`z - 0.5`) so the bone runs through their middle (`R.limb` in `js/stack.js` does this). If you skip it the
+  skeleton overlay sits visibly low.
 
 ## 4. The walk
 

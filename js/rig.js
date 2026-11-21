@@ -32,13 +32,15 @@
     thigh: 7, shin: 7,        // leg bones
     ankle: 1.5,               // the ankle's height over the sole
     hipHalf: 2.4,             // half the distance between the hips
+    kneeHint: 1,              // 1: knees bend forward; -1: backward
     standHip: 13.2,           // hip height when standing
     stride: 18,               // ground covered by one full cycle (two steps)
     duty: 0.6,                // the part of a cycle a foot is planted; over 0.5 is a walk, under it a run
     lift: 2.4,                // how high a swinging foot rises
     bob: 0.35,                // hips rise and fall, twice a cycle
     twist: 0.16,              // hips turn with the leading leg (radians); the shoulders turn against it
-    shoulderUp: 9.5, shoulderHalf: 7.5, upperArm: 4.6, foreArm: 4.6, armSwing: 0.55
+    spine: 9.5,               // from the hips up to the shoulders (or to the top of a body without arms)
+    arms: true, shoulderHalf: 7.5, upperArm: 4.6, foreArm: 4.6, armSwing: 0.55
   };
 
   function createWalker(cfg) {
@@ -89,19 +91,20 @@
     if (w.hipZ > most) w.hipZ = most;
   }
 
-  // Everything a drawing needs, as plain data: joints are [x, y, z].
+  // Everything a drawing needs, as plain data: joints are [x, y, z]. arms is empty when the character has none.
   function pose(w) {
     const c = w.c, ph = w.phase * TAU, fwd = [Math.cos(w.h), Math.sin(w.h), 0];
     const twist = c.twist * Math.cos(ph), hipsAngle = w.h + twist, shouldersAngle = w.h - twist * 1.2;
     const pz = w.hipZ - c.bob * Math.cos(2 * ph);
-    const P = { x: w.x, y: w.y, heading: w.h, phase: w.phase, pelvis: [w.x, w.y, pz], hipsAngle: hipsAngle, shouldersAngle: shouldersAngle, legs: [], arms: [] };
+    const P = { x: w.x, y: w.y, heading: w.h, phase: w.phase, pelvis: [w.x, w.y, pz], top: [w.x, w.y, pz + c.spine], hipsAngle: hipsAngle, shouldersAngle: shouldersAngle, legs: [], arms: [] };
     for (let i = 0; i < 2; i++) {
       const side = i ? 1 : -1, f = w.feet[i];
       const hip = [w.x - Math.sin(hipsAngle) * side * c.hipHalf, w.y + Math.cos(hipsAngle) * side * c.hipHalf, pz];
       const ankle = [f.x, f.y, f.z + c.ankle];
-      P.legs.push({ hip: hip, knee: solveTwoBone(hip, ankle, c.thigh, c.shin, fwd), ankle: ankle, sole: [f.x, f.y, f.z], rot: f.rot, planted: f.planted });
+      P.legs.push({ hip: hip, knee: solveTwoBone(hip, ankle, c.thigh, c.shin, [fwd[0] * c.kneeHint, fwd[1] * c.kneeHint, 0]), ankle: ankle, sole: [f.x, f.y, f.z], rot: f.rot, planted: f.planted });
+      if (!c.arms) continue;
       // the arm swings against the leg on its side; the elbow is solved with the same function, bending backwards
-      const sh = [w.x - Math.sin(shouldersAngle) * side * c.shoulderHalf, w.y + Math.cos(shouldersAngle) * side * c.shoulderHalf, pz + c.shoulderUp];
+      const sh = [w.x - Math.sin(shouldersAngle) * side * c.shoulderHalf, w.y + Math.cos(shouldersAngle) * side * c.shoulderHalf, pz + c.spine];
       const a = side * c.armSwing * Math.cos(ph), L = (c.upperArm + c.foreArm) * 0.93;
       const hand = [sh[0] + fwd[0] * Math.sin(a) * L, sh[1] + fwd[1] * Math.sin(a) * L, sh[2] - Math.cos(a) * L];
       P.arms.push({ shoulder: sh, elbow: solveTwoBone(sh, hand, c.upperArm, c.foreArm, [-fwd[0], -fwd[1], 0]), hand: hand });

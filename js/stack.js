@@ -50,6 +50,10 @@
       },
       // queue a whole stack standing at (x, y, z)
       stack: function (stack, x, y, z, rot) { for (let i = 0; i < stack.n; i++) R.slice(stack, i, x, y, z + i, rot, 1); },
+      // queue a limb: one single-slice image repeated n times along the bone from a to b ([x, y, z] each).
+      // A slice is a layer thick and is drawn upward from its z, so each copy goes half a layer under the bone:
+      // the bone then runs through the middle of the limb, and a skeleton drawn over it lines up.
+      limb: function (stack, a, b, n) { for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; R.slice(stack, 0, a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t - 0.5, 0, 1); } },
       // draw everything queued, lowest first
       flush: function () {
         items.sort(function (a, b) { return a.h - b.h || a.n - b.n; });

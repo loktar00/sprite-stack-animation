@@ -1,5 +1,7 @@
 #!/bin/sh
-# encode.sh: capture one lap and make a looping GIF and an MP4.   sh tools/encode.sh [name] [query]
+# encode.sh: capture one lap and make a looping GIF and an MP4.
+#   sh tools/encode.sh                       the character in this folder -> out/walk.gif, out/walk.mp4
+#   sh tools/encode.sh robot "&char=robot"   an example -> out/robot.gif, out/robot.mp4
 # Needs python with Playwright (see capture.py) and ffmpeg. Output goes to out/.
 set -e
 cd "$(dirname "$0")/.."
