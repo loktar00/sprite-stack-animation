@@ -1,0 +1,4 @@
+html, body { margin: 0; background: #17131c; color: #8d8399; font: 13px/1.5 system-ui, "Segoe UI", Helvetica, Arial, sans-serif; }
+canvas { display: block; width: 480px; height: 300px; image-rendering: pixelated; }
+p { margin: 10px 12px; max-width: 456px; }
+a { color: #c9bfd6; }

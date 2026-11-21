@@ -1,5 +1,8 @@
 # Sprite stack animation
 
+**New here? Start with the [step-by-step tutorial](docs/TUTORIAL.md):** one slice, a stack, parts, a knee solved with
+two-bone IK, planted feet, the full rig, then the looping GIF. Every step is a page you can open and change.
+
 ![A sprite-stacked figure walking: the stack, the stack spread apart, the stack with its skeleton, the skeleton](media/walk.gif)
 
 A starter kit for sprite-stacked characters that walk, on a plain 2D canvas. A character is a handful of small PNG
@@ -170,6 +173,8 @@ After changing the kit, `node tools/sync-skill.js` copies it into the skill's `t
 | `art/` | the built strips, `parts.js` and `sheet.png` |
 | `tools/build-art.js` | strips from `character.js` |
 | `tools/capture.py`, `tools/encode.sh` | frames, GIF and MP4 |
+| `docs/TUTORIAL.md`, `docs/steps/` | the tutorial and its nine runnable pages |
+| `tools/tutorial-images.sh` | the tutorial's pictures, captured from the step pages |
 | `tools/sync-skill.js` | copies the kit into the skill's `template/` |
 | `skills/animated-sprite-stacks/` | the skill |
 

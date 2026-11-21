@@ -6,7 +6,7 @@
 'use strict';
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..'), dest = path.join(root, 'skills', 'animated-sprite-stacks', 'template');
-const KIT = ['index.html', 'character.js', 'js', 'art', 'tools/build-art.js', 'tools/capture.py', 'tools/encode.sh', 'examples/robot/character.js', 'examples/robot/art'];
+const KIT = ['index.html', 'character.js', 'js', 'art', 'tools/build-art.js', 'tools/capture.py', 'tools/encode.sh', 'examples/robot/character.js', 'examples/robot/art', 'docs/TUTORIAL.md', 'docs/steps'];
 let n = 0;
 function copy(from, to) {
   const st = fs.statSync(from);

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Step 2: a stack</title>
+<link rel="stylesheet" href="step.css">
+</head>
+<body>
+<canvas id="c" width="480" height="300"></canvas>
+<p>Left: one draw per slice, so each layer is a pixel thin. Right: each slice repeated to fill its layer. <a href="03.html">Next: parts</a></p>
+<script src="step.js"></script>
+<script>
+const strip = new Image(); strip.src = '../../art/head.png';
+const CW = 12, CH = 12, N = 10;
+const SCALE = 9;                                   // screen pixels per art pixel
+const PITCH = 42 * Math.PI / 180;                  // the camera angle above the ground
+const ys = Math.sin(PITCH);                        // how flat the ground looks
+const zk = SCALE * Math.cos(PITCH);                // screen rows per layer of height
+
+function drawStack(ctx, cx, cy, angle, fill) {
+  for (let i = 0; i < N; i++) {                    // bottom slice first: later slices cover earlier ones
+    const rows = fill ? Math.ceil(zk) : 1;         // a layer is zk rows tall; a slice is flat, so repeat it
+    for (let k = 0; k < rows; k++) {
+      ctx.setTransform(1, 0, 0, 1, cx, cy - Math.round(i * zk) - k);   // each layer a little further up the screen
+      ctx.scale(1, ys);                            // the squash
+      ctx.rotate(angle);                           // the facing
+      ctx.drawImage(strip, i * CW, 0, CW, CH, -CW * SCALE / 2, -CH * SCALE / 2, CW * SCALE, CH * SCALE);
+    }
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+Step.run(240, function (ctx, f) {
+  const angle = f / 240 * Step.TAU;
+  drawStack(ctx, 125, 215, angle, false);
+  drawStack(ctx, 355, 215, angle, true);
+  Step.text('10 drawImage calls', 70, 280); Step.text(10 * Math.ceil(zk) + ' drawImage calls', 300, 280);
+}, new Promise(function (ok) { strip.onload = ok; }));
+</script>
+</body>
+</html>

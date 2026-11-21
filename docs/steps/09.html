@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Step 9: loop and capture</title>
+<link rel="stylesheet" href="step.css">
+</head>
+<body>
+<canvas id="c" width="480" height="300"></canvas>
+<p>The lap is worked out once and kept: frame f is always the same picture, and the last frame leads into the first. Back to <a href="01.html">step 1</a></p>
+<script src="../../character.js"></script>
+<script src="../../art/parts.js"></script>
+<script src="../../js/stack.js"></script>
+<script src="../../js/rig.js"></script>
+<script src="step.js"></script>
+<script>
+const C = CHARACTER, SCALE = 4;
+const R = SpriteStack.createRenderer(Step.ctx, { scale: SCALE, pitch: 42 * Math.PI / 180 });
+const LAP = 540, STRIDES = 10;
+const RADIUS = STRIDES * C.rig.stride / (LAP * 2 * Math.sin(Math.PI / LAP));   // a whole number of strides per lap: no seam
+const where = function (f) { const a = f * Step.TAU / LAP; return [RADIUS * Math.cos(a), RADIUS * Math.sin(a), a + Math.PI / 2]; };
+
+// Walk four laps with a fixed step and keep the poses of the last one.
+const walker = Rig.createWalker(C.rig), start = where(0), FRAMES = [];
+Rig.place(walker, start[0], start[1], start[2]);
+for (let f = 1; f <= LAP * 4; f++) { const p = where(f); Rig.step(walker, p[0], p[1], p[2], 1 / 60); if (f >= LAP * 3) FRAMES.push(Rig.pose(walker)); }
+
+// The check: the pose one lap later must be the same pose.
+let seam = 0;
+for (let i = 0; i < 2; i++) for (let k = 0; k < 3; k++) seam += Math.abs(FRAMES[0].legs[i].knee[k] - FRAMES[LAP].legs[i].knee[k]);
+
+let art = null;
+Step.run(LAP, function (ctx, f) {                            // draw(f) reads nothing but f
+  const P = FRAMES[f];
+  R.begin(240, 190);
+  ctx.strokeStyle = '#2a2233'; ctx.beginPath(); ctx.ellipse(240, 190, SCALE * RADIUS, SCALE * RADIUS * R.ys, 0, 0, Step.TAU); ctx.stroke();
+  C.draw(R, art, P); R.flush();
+  Step.text('frame ' + f + ' of ' + LAP, 20, 22, Step.INK);
+  Step.text('lap = ' + STRIDES + ' strides; seam error ' + seam.toExponential(1), 20, 286);
+}, SpriteStack.load(PARTS, '../../art/').then(function (a) { art = a; }));
+</script>
+</body>
+</html>

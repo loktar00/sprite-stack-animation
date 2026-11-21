@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Step 8: put the stacks on</title>
+<link rel="stylesheet" href="step.css">
+</head>
+<body>
+<canvas id="c" width="480" height="300"></canvas>
+<p>Every frame: pose the rig, queue each stack at its joints, draw. Then the bones on top, then the layers spread apart. <a href="09.html">Next: loop and capture</a></p>
+<script src="../../character.js"></script>
+<script src="../../art/parts.js"></script>
+<script src="../../js/stack.js"></script>
+<script src="../../js/rig.js"></script>
+<script src="bones.js"></script>
+<script src="step.js"></script>
+<script>
+const SCALE = 6;
+const C = CHARACTER;                                         // character.js: the rig numbers and the draw function
+const R = SpriteStack.createRenderer(Step.ctx, { scale: SCALE, pitch: 42 * Math.PI / 180 });
+const LAP = 540, STRIDES = 10;                               // one lap of the circle: 540 frames, exactly 10 strides
+const RADIUS = STRIDES * C.rig.stride / (LAP * 2 * Math.sin(Math.PI / LAP));   // so that the 540 chords of the lap add up to 10 strides
+const where = function (f) { const a = f * Step.TAU / LAP; return [RADIUS * Math.cos(a), RADIUS * Math.sin(a), a + Math.PI / 2]; };   // x, y, heading
+
+let walker = null, at = null;
+function poseAt(f) {                                         // walk the rig to frame f (three laps first, so the start-up is forgotten)
+  if (at === null || f < at) { walker = Rig.createWalker(C.rig); const p = where(-LAP * 3); Rig.place(walker, p[0], p[1], p[2]); at = -LAP * 3; }
+  for (; at < f; at++) { const p = where(at + 1); Rig.step(walker, p[0], p[1], p[2], 1 / 60); }
+  return Rig.pose(walker);
+}
+
+let art = null;
+const ramp = function (u, a, b) { return Step.ease(Math.max(0, Math.min(1, (u - a) / (b - a)))); };
+
+Step.run(LAP, function (ctx, f) {
+  const P = poseAt(f), u = f / LAP;
+  const bones = ramp(u, 0.3, 0.34) - ramp(u, 0.6, 0.64);                 // second third of the lap: skeleton on top
+  const spread = 0.55 * (ramp(u, 0.66, 0.74) - ramp(u, 0.9, 0.98));      // last third: layers spread apart
+  const ox = 240 - Math.round(SCALE * P.x), oy = 262 - Math.round(SCALE * P.y * R.ys);
+  drawGround(R, ox, oy);
+
+  R.begin(ox, oy, spread);
+  C.draw(R, art, P);                                         // character.js: boots on the soles, discs along the bones, torso, head
+  R.flush();
+
+  if (bones > 0) { R.begin(ox, oy); drawBones(R.project, P, bones); }
+  Step.text(R.calls + ' drawImage calls', 20, 22);
+  Step.text(spread > 0.02 ? 'spread: the gaps are for show' : bones > 0.5 ? 'the bones the stacks are hung on' : 'stacks placed along the bones', 20, 286, Step.INK);
+}, SpriteStack.load(PARTS, '../../art/').then(function (a) { art = a; }));
+</script>
+</body>
+</html>

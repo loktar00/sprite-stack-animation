@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Step 1: one slice</title>
+<link rel="stylesheet" href="step.css">
+</head>
+<body>
+<canvas id="c" width="480" height="300"></canvas>
+<p>One cell of torso.png, drawn with one drawImage. <a href="02.html">Next: a stack</a></p>
+<script src="step.js"></script>
+<script>
+// A strip is one PNG: the slices of a part side by side, bottom slice first. Here: the torso, 12 cells of 12x16.
+const strip = new Image(); strip.src = '../../art/torso.png';
+const CW = 12, CH = 16, N = 12;
+
+Step.run(240, function (ctx, f) {
+  const i = Math.floor(f / 20) % N;                                    // which slice to show
+  ctx.drawImage(strip, 0, 0, CW * N, CH, 24, 30, CW * N * 3, CH * 3);    // the whole strip, three times its size
+  ctx.strokeStyle = Step.PIN; ctx.strokeRect(24.5 + i * CW * 3, 30.5, CW * 3 - 1, CH * 3 - 1);
+
+  // one slice: cut cell i out of the strip and draw it. This call is the whole technique.
+  ctx.drawImage(strip, i * CW, 0, CW, CH, 174, 104, CW * 11, CH * 11);
+
+  Step.text('torso.png: 12 slices, bottom first', 24, 20);
+  Step.text('slice ' + i + (i === 0 ? ' (the bottom)' : i === N - 1 ? ' (the top)' : ''), 24, 120, Step.INK);
+  Step.text('seen from above,', 24, 140); Step.text('front to the right', 24, 156);
+}, new Promise(function (ok) { strip.onload = ok; }));
+</script>
+</body>
+</html>

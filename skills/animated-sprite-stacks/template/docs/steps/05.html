@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Step 5: planted feet</title>
+<link rel="stylesheet" href="step.css">
+</head>
+<body>
+<canvas id="c" width="480" height="300"></canvas>
+<p>The clock runs on distance. A planted foot stays where it is; the other one catches up. <a href="06.html">Next: lift, bob, hip height</a></p>
+<script src="ik2d.js"></script>
+<script src="step.js"></script>
+<script>
+const THIGH = 7, SHIN = 7, HIP = 12.2, S = 12, GROUND = 240;
+const STRIDE = 18;                      // ground covered by one full cycle: two steps
+const DUTY = 0.6;                       // the part of its cycle a foot is planted
+const STANCE = DUTY * STRIDE;           // ground the body covers while one foot is down
+
+let body, phase, feet, at = null;
+function reset() { body = 0; phase = 0; feet = [{ x: 0, planted: true, from: 0 }, { x: 0, planted: true, from: 0 }]; }
+function walk(dist) {
+  body += dist;
+  phase = (phase + dist / STRIDE) % 1;                       // the step clock: moved by distance, never by time
+  for (let i = 0; i < 2; i++) {
+    const foot = feet[i], p = (phase + i * 0.5) % 1;         // the two legs are half a cycle apart
+    if (p < DUTY) {
+      if (!foot.planted) { foot.planted = true; foot.x = body + STANCE / 2 - p * STRIDE; }   // touchdown: half a stance ahead of the hip
+      // planted: foot.x is not touched. The body moves over it.
+    } else {
+      if (foot.planted) { foot.planted = false; foot.from = foot.x; }
+      const u = (p - DUTY) / (1 - DUTY);                     // 0 at lift-off, 1 at touchdown
+      const land = body + (1 - p) * STRIDE + STANCE / 2;      // where the hip will be at touchdown, plus half a stance
+      foot.x = foot.from + (land - foot.from) * Step.ease(u);
+    }
+  }
+}
+
+Step.run(240, function (ctx, f) {
+  if (at === null || f < at) { reset(); at = -240; }         // (walk a while before frame 0, so the loop starts mid-stride)
+  for (; at < f; at++) walk(STRIDE / 80);                     // 80 frames a cycle
+  const px = function (x, z) { return [240 + (x - body) * S, GROUND - z * S]; };   // the picture follows the body
+
+  Step.line([0, GROUND], [480, GROUND], '#40374c');
+  for (let m = Math.floor((body - 21) / 3) * 3; m < body + 21; m += 3) Step.line(px(m, 0), px(m, -0.5), '#40374c');   // marks fixed to the ground
+  for (let i = 1; i >= 0; i--) {
+    const foot = feet[i], hip = [body, HIP], ankle = [foot.x, 0.6], knee = solveKnee(hip, ankle, THIGH, SHIN, [1, 0]), col = i ? Step.DIM : Step.INK;
+    Step.line(px(hip[0], hip[1]), px(knee[0], knee[1]), col); Step.line(px(knee[0], knee[1]), px(ankle[0], ankle[1]), col);
+    Step.dot(px(knee[0], knee[1]), 3, Step.BG, col); Step.dot(px(ankle[0], ankle[1]), 4, foot.planted ? Step.PIN : Step.BG, col);
+    if (foot.planted) Step.line(px(foot.x, -0.9), px(foot.x, -2), Step.PIN);
+    const p = (phase + i * 0.5) % 1;                         // the clock of this leg: the pink part is "planted"
+    ctx.fillStyle = '#2a2233'; ctx.fillRect(20, 20 + i * 16, 160, 8); ctx.fillStyle = Step.PIN; ctx.fillRect(20, 20 + i * 16, 160 * DUTY, 8);
+    ctx.fillStyle = Step.INK; ctx.fillRect(20 + 160 * p - 1, 17 + i * 16, 3, 14);
+    Step.text(i ? 'far leg' : 'near leg', 190, 28 + i * 16, col);
+  }
+  Step.dot(px(body, HIP), 4);
+  Step.text('pink foot: planted, a fixed point on the ground', 20, 286);
+});
+</script>
+</body>
+</html>

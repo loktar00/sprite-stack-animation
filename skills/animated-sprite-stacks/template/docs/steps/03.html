@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Step 3: parts</title>
+<link rel="stylesheet" href="step.css">
+</head>
+<body>
+<canvas id="c" width="480" height="300"></canvas>
+<p>Seven strips make the figure: two stacks, a boot, and four small discs repeated along straight lines. <a href="04.html">Next: a knee</a></p>
+<script src="../../art/parts.js"></script>
+<script src="../../js/stack.js"></script>
+<script src="step.js"></script>
+<script>
+// From here on the drawing is js/stack.js: the loop of step 2, plus one queue for all parts sorted by height.
+const R = SpriteStack.createRenderer(Step.ctx, { scale: 6, pitch: 42 * Math.PI / 180 });
+let art = null;
+
+Step.run(360, function (ctx, f) {
+  const a = f / 360 * Step.TAU, c = Math.cos(a), s = Math.sin(a);
+  const at = function (fwd, side, z) { return [fwd * c - side * s, fwd * s + side * c, z]; };   // a point on the body, turned with it
+  R.begin(130, 262);
+  for (let i = 0; i < 2; i++) {
+    const side = i ? 1 : -1, foot = at(0.5, side * 2.4, 0);
+    R.stack(art.boot, foot[0], foot[1], 0, a);
+    R.limb(art.shin, at(0, side * 2.4, 1.5), at(0, side * 2.4, 7.4), 5);        // a limb: one disc repeated along a line
+    R.limb(art.thigh, at(0, side * 2.4, 7.4), at(0, side * 2.4, 13.2), 5);
+    R.limb(art.arm, at(0, side * 7.5, 22.7), at(0, side * 7.8, 14), 8);
+    R.limb(art.hand, at(0, side * 7.8, 13.6), at(0, side * 7.8, 13.6), 1);
+  }
+  R.stack(art.torso, 0, 0, 12.2, a);          // stack, x, y, height of its underside, angle
+  R.stack(art.head, 0, 0, 24.2, a);
+  R.flush();                                   // sort everything by height and draw it, lowest first
+
+  let y = 28;                                  // the strips themselves
+  for (const p of PARTS) { Step.text(p.name + '.png  ' + p.n + ' x ' + p.cw + 'x' + p.ch, 290, y); ctx.drawImage(art[p.name].img, 290, y + 5); y += p.ch + 24; }
+}, SpriteStack.load(PARTS, '../../art/').then(function (a) { art = a; }));
+</script>
+</body>
+</html>

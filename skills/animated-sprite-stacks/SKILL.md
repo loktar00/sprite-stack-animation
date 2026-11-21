@@ -20,39 +20,50 @@ drawing or the rig from memory.
 | `index.html`, `js/stack.js`, `js/rig.js`, `js/demo.js` | the page, the stack renderer, the gait and IK, the views and frame clock |
 | `tools/build-art.js` | strips from `character.js` (Node, no packages) |
 | `tools/capture.py`, `tools/encode.sh` | frames, GIF and MP4 (Python with Playwright, ffmpeg) |
+| `docs/TUTORIAL.md`, `docs/steps/01.html` to `09.html` | the method built up step by step, each step a small runnable page |
 
 ## Make a new character
 
+`template/docs/TUTORIAL.md` builds a character from nothing in nine steps, each a runnable page in
+`template/docs/steps/` (01 one slice, 02 a stack, 03 parts, 04 a knee by two-bone IK, 05 planted feet and the
+step clock, 06 lift, bob and hip height, 07 the full rig with twist and arms, 08 stacks on the bones, 09 loop
+and capture). Read it once if any part of the method is unclear. The workflow below follows the same order,
+and at each point you check the same thing that step shows.
+
 1. **Copy the kit** into the user's project: the whole `template/` folder, as a new folder named for the
    character. Keep `js/` and `tools/` unchanged.
-2. **Write `character.js`** from the user's description. Start from the template's own (a figure with arms) or
-   `examples/robot/character.js` (no arms), whichever is closer.
-   - `materials`: three tones each, `[side in shade, side, top]`. Pick 5 to 8 materials. Tops clearly lighter
-     than sides, or the form will not read.
+2. **Slices and stacks (tutorial steps 1 to 3): write `materials` and `parts` in `character.js`** from the
+   user's description. Start from the template's own (a figure with arms) or `examples/robot/character.js`
+   (no arms), whichever is closer.
+   - `materials`: three tones each, `[side in shade, side, top]`. Pick 5 to 8. Tops clearly lighter than
+     sides, or the form will not read.
    - `parts`: one stack per rigid piece (head, torso, a boot or foot) plus one single-layer disc per limb
-     segment. `w` runs front to back with +x forward, `h` side to side, `layers` is the height. Each `fn(x, y, z)`
-     returns a material name or null, with x and y measured from the middle of the cell. Typical sizes: head and
-     torso 10 to 16 pixels across and 8 to 14 layers; limb discs 5x5. Put identifying detail on the front (+x)
-     and on top, where the camera sees it.
-   - `rig`: make the numbers agree with the art. `thigh + shin` is a little more than `standHip - ankle`, so the
-     knees are slightly bent when standing. `hipHalf` is half the width of the lowest torso layer.
-     `spine` is the height from hips to shoulders. `stride` is about 1.3 times the leg length for a walk.
-   - `draw`: boots at `sole` with the foot's `rot`; `R.limb` for each bone; the torso slices blended from
-     `hipsAngle` to `shouldersAngle`; the head on top at `heading`.
-3. **Build:** `node tools/build-art.js`. Open `art/sheet.png` and check every slice is what you meant, bottom
-   layer first.
-4. **Look at it** before saying it works: open `index.html`, or capture stills with
-   `python tools/capture.py out/check --scale 2 --step 90` and read a few of the PNGs. Check the stack view from
-   front, side and back, then `?view=rig`: the bones must run through the limbs and the hips must sit at the
-   bottom of the torso.
-5. **Tune** in `rig` and reload (no rebuild needed):
+     segment. `w` runs front to back with +x forward, `h` side to side, `layers` is the height. Each
+     `fn(x, y, z)` returns a material name or null, with x and y measured from the middle of the cell. Typical
+     sizes: head and torso 10 to 16 pixels across and 8 to 14 layers; limb discs 5x5. Put identifying detail on
+     the front (+x) and on top, where the camera sees it.
+   - Build: `node tools/build-art.js`. Open `art/sheet.png` and check every slice is what you meant, bottom
+     layer first.
+3. **The rig (steps 4 to 7): write `rig`** so the numbers agree with the art.
+   - Bones (step 4): `thigh + shin` a little more than `standHip - ankle`, so the knees are slightly bent
+     when standing. `kneeHint: -1` for backward knees.
+   - Step clock (step 5): `stride` about 1.3 times the leg length for a walk; `duty` 0.6 (under 0.5 is a run).
+   - Weight (step 6): `lift` 2 to 3, `bob` 0.3 to 0.6.
+   - Body (step 7): `hipHalf` is half the width of the lowest torso layer; `spine` is the height from hips to
+     shoulders; `twist` 0.1 to 0.2; `arms: false` for a body without arms, otherwise `shoulderHalf`,
+     `upperArm`, `foreArm`, `armSwing`.
+4. **Stacks on the bones (step 8): write `draw`.** Boots at `sole` with the foot's `rot`; `R.limb` for each
+   bone; the torso slices blended from `hipsAngle` to `shouldersAngle`; the head on top at `heading`.
+5. **Look at it** before saying it works. Capture stills with
+   `python tools/capture.py out/check --scale 2 --step 90` and read a few of the PNGs (or open `index.html`).
+   Check the stack from front, side and back; then `--query "&view=rig"`: the bones must run through the limbs
+   and the hips must sit at the bottom of the torso; then `--query "&view=spread"`: every layer a separate sheet.
+6. **Tune** in `rig` and reload (no rebuild needed):
    - stiff straight legs: lower `standHip` or lengthen the bones;
    - shuffling: raise `lift`; gliding: raise `bob` and `twist`;
-   - a run instead of a walk: `duty` under 0.5 and a longer `stride`;
-   - knees the wrong way: `kneeHint: -1`;
    - too fast or slow in the loop: `walk.strides` (strides per lap; keep it a whole number).
-6. **Capture:** `sh tools/encode.sh` writes `out/walk.gif` (640x360, 30 fps) and `out/walk.mp4` (1080p, 60 fps).
-   Look at frames of the result before handing it over.
+7. **Loop and capture (step 9):** `sh tools/encode.sh` writes `out/walk.gif` (640x360, 30 fps) and
+   `out/walk.mp4` (1080p, 60 fps). Look at frames of the result before handing it over.
 
 Hand-drawn strips work too: a part listed without `fn` is left alone by the builder, and the user supplies
 `art/<name>.png` (cells side by side, bottom slice first, equal cell size, turning axis at the cell centre,

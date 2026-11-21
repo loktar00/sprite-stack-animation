@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Step 4: a knee</title>
+<link rel="stylesheet" href="step.css">
+</head>
+<body>
+<canvas id="c" width="480" height="300"></canvas>
+<p>Move the mouse over the picture: the foot goes to the pointer and the knee is worked out. <a href="05.html">Next: planted feet</a></p>
+<script src="ik2d.js"></script>
+<script src="step.js"></script>
+<script>
+// A side view: x is forward, z is up. The hip and the foot are given; solveKnee (ik2d.js) finds the knee.
+const THIGH = 7, SHIN = 7, S = 12, GROUND = 252;
+const px = function (p) { return [200 + p[0] * S, GROUND - p[1] * S]; };      // a point [x, z] on the canvas
+
+Step.run(240, function (ctx, f) {
+  const hip = [0, 11.5], t = f / 240 * Step.TAU;
+  const target = Step.mouse.on ? [(Step.mouse.x - 200) / S, (GROUND - Step.mouse.y) / S]     // the pointer...
+    : [1 + 9.5 * Math.cos(t), 2.3 + 2.3 * Math.sin(t)];                                        // ...or a path, when it is away
+
+  const knee = solveKnee(hip, target, THIGH, SHIN, [1, 0]);                    // hint [1, 0]: bend forward
+  const d = Math.hypot(target[0] - knee[0], target[1] - knee[1]);
+  const foot = [knee[0] + (target[0] - knee[0]) / d * SHIN, knee[1] + (target[1] - knee[1]) / d * SHIN];   // (the target itself, unless it is out of reach)
+
+  Step.line([20, GROUND], [460, GROUND], '#40374c');
+  ctx.setLineDash([3, 5]); ctx.strokeStyle = '#40374c'; ctx.beginPath(); ctx.arc(px(hip)[0], px(hip)[1], (THIGH + SHIN) * S, 0, Step.TAU); ctx.stroke();   // as far as the leg reaches
+  Step.line(px(hip), px(target), Step.DIM); ctx.setLineDash([]);
+  Step.line(px(hip), px(knee)); Step.line(px(knee), px(foot));
+  Step.dot(px(hip)); Step.dot(px(knee)); Step.dot(px(foot), 4, Step.PIN);
+  const q = px(target); Step.line([q[0] - 7, q[1]], [q[0] + 7, q[1]], Step.PIN); Step.line([q[0], q[1] - 7], [q[0], q[1] + 7], Step.PIN);
+  Step.text('hip', px(hip)[0] - 34, px(hip)[1] + 4, Step.INK); Step.text('knee', px(knee)[0] + 10, px(knee)[1] + 4, Step.INK); Step.text('foot', px(foot)[0] + 10, px(foot)[1] - 8, Step.INK);
+  const len = Math.hypot(target[0] - hip[0], target[1] - hip[1]);
+  Step.text('thigh 7, shin 7, hip to foot ' + len.toFixed(1) + (len > THIGH + SHIN ? '  (out of reach: straight leg)' : ''), 20, 284);
+});
+</script>
+</body>
+</html>

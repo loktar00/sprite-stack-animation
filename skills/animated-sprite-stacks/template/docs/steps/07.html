@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Step 7: three dimensions and arms</title>
+<link rel="stylesheet" href="step.css">
+</head>
+<body>
+<canvas id="c" width="480" height="300"></canvas>
+<p>js/rig.js: the same walk on the ground plane, with hip twist, and arms bent by the same solver. <a href="08.html">Next: put the stacks on</a></p>
+<script src="../../character.js"></script>
+<script src="../../js/stack.js"></script>
+<script src="../../js/rig.js"></script>
+<script src="bones.js"></script>
+<script src="step.js"></script>
+<script>
+const SCALE = 7;
+const C = CHARACTER;                                         // character.js: the rig numbers and the draw function
+const R = SpriteStack.createRenderer(Step.ctx, { scale: SCALE, pitch: 42 * Math.PI / 180 });
+const LAP = 540, STRIDES = 10;                               // one lap of the circle: 540 frames, exactly 10 strides
+const RADIUS = STRIDES * C.rig.stride / (LAP * 2 * Math.sin(Math.PI / LAP));   // so that the 540 chords of the lap add up to 10 strides
+const where = function (f) { const a = f * Step.TAU / LAP; return [RADIUS * Math.cos(a), RADIUS * Math.sin(a), a + Math.PI / 2]; };   // x, y, heading
+
+let walker = null, at = null;
+function poseAt(f) {                                         // walk the rig to frame f (three laps first, so the start-up is forgotten)
+  if (at === null || f < at) { walker = Rig.createWalker(C.rig); const p = where(-LAP * 3); Rig.place(walker, p[0], p[1], p[2]); at = -LAP * 3; }
+  for (; at < f; at++) { const p = where(at + 1); Rig.step(walker, p[0], p[1], p[2], 1 / 60); }
+  return Rig.pose(walker);
+}
+
+Step.run(LAP, function (ctx, f) {
+  const P = poseAt(f);                                       // hips, knees, ankles, shoulders, elbows, hands: all [x, y, z]
+  const ox = 240 - Math.round(SCALE * P.x), oy = 250 - Math.round(SCALE * P.y * R.ys);   // the picture follows the ground point under the body
+  R.begin(ox, oy);
+  drawGround(R, ox, oy);
+  drawBones(R.project, P);                                   // bones.js: lines between the joints
+  Step.text('hips turn with the leading leg, shoulders against it', 20, 22);
+});
+</script>
+</body>
+</html>
